@@ -1,0 +1,396 @@
+{
+  "name": "Approve",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "approve-post",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "048743ea-4f47-43d4-894e-da34515259c8",
+      "name": "Webhook",
+      "webhookId": "482f2c30-8be0-44e8-ba7e-e7a08157088f"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "posts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.body.postId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "c2ffbf70-d5ee-4e24-9ad5-76b22583d84e",
+      "name": "Get a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ELVYePDkdazQFO2T",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "posts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "generating"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "9e7c3aab-d50d-41f1-aed8-9841a786a053",
+      "name": "Update a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ELVYePDkdazQFO2T",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const post = $('Get a row').first().json;\nconst slides = post.carousel_content;\nreturn slides.map(slide => ({\n  json: {\n    index: slide.index,\n    text: slide.text,\n    image_prompt: slide.image_prompt,\n    postId: post.id \n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        0
+      ],
+      "id": "44f1af0b-6ccc-468c-a480-dfefbb985117",
+      "name": "Split Slides"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        784,
+        0
+      ],
+      "id": "4e50bb66-b7bb-4ffc-ac54-46257bd4687c",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.data[0].url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1120,
+        160
+      ],
+      "id": "70fbf19b-10ba-412f-9e6b-7cc94545c9cc",
+      "name": "Download Image"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/images/generations",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"dall-e-3\",\n  \"prompt\": \"{{ $json.image_prompt }}\",\n  \"n\": 1,\n  \"size\": \"1024x1024\",\n  \"response_format\": \"url\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        928,
+        160
+      ],
+      "id": "dd3e7a82-554d-4fcf-98c9-6fd2b50696ee",
+      "name": "HTTP Generate Img",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "E4sazu6ENW1rLUIf",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://fogotgnjdpvsfexbcjza.supabase.co/storage/v1/object/content-factory/{{ $('Split Slides').item.json.postId }}/slide_{{ $('Split Slides').item.json.index }}.png",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "image/png"
+            },
+            {
+              "name": "x-upsert",
+              "value": "true"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvZ290Z25qZHB2c2ZleGJjanphIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Nzc0NTc4OCwiZXhwIjoyMDgzMzIxNzg4fQ.MOthHlfp3FHopqUPuKuQ8KxPV_zA5gm_seBGbaJPl58"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1328,
+        160
+      ],
+      "id": "9807571a-962e-4422-8b55-3c1be98b96ff",
+      "name": "Save in db"
+    },
+    {
+      "parameters": {
+        "jsCode": "const splitData = $('Split Slides').item.json;\nconst postId = splitData.postId;\nconst index = splitData.index;\nconst filePath = `${postId}/slide_${index}.png`;\nconst projectUrl = 'https://fogotgnjdpvsfexbcjza.supabase.co';\nconst bucketName = 'content-factory';\nconst publicUrl = `${projectUrl}/storage/v1/object/public/${bucketName}/${filePath}`;\nreturn {\n  json: {\n    index: index,\n    text: splitData.text,\n    image_prompt: splitData.image_prompt,\n    image_url: publicUrl\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        160
+      ],
+      "id": "e8181d0b-1372-4b6e-9d03-81d4b611c9ee",
+      "name": "all time url"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst cleanArray = items.map(item => item.json);\nreturn {\n  json: {\n    slides: cleanArray\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -16
+      ],
+      "id": "456869a3-e826-4015-909a-d9bbdd3f723e",
+      "name": "Aggregate Results"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "posts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Get a row').first().json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "carousel_content",
+              "fieldValue": "={{ $('Aggregate Results').item.json.slides }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "approved"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        -16
+      ],
+      "id": "d1ade311-ccc4-4aab-a244-4d4749aae923",
+      "name": "Update a row1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ELVYePDkdazQFO2T",
+          "name": "Supabase account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row": {
+      "main": [
+        [
+          {
+            "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Slides": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Generate Img",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Save in db",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Generate Img": {
+      "main": [
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save in db": {
+      "main": [
+        [
+          {
+            "node": "all time url",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "all time url": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Update a row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row": {
+      "main": [
+        [
+          {
+            "node": "Split Slides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "28f9e9a2-2f99-4b7e-ba84-4224e942183e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d63b6b85d9a6f3a05b77157b36bcd0f29972c6ce4983c0f7f6b2e42c24fde778"
+  },
+  "id": "JoMbEmLFBFwmakBw",
+  "tags": []
+}

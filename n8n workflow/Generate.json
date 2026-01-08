@@ -1,0 +1,467 @@
+{
+  "name": "Generate",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -144,
+        0
+      ],
+      "id": "c004baaa-869a-4de1-aaca-4f46b573064e",
+      "name": "Webhook",
+      "webhookId": "4dd1e410-295f-4a99-896e-f2cf3de2a0ec"
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $input.first().json.choices[0].message.content;\nlet cleanJson = aiResponse.replace(/```json/g, '').replace(/```/g, '').trim();\n\nlet slides;\ntry {\n  slides = JSON.parse(cleanJson);\n} catch (e) {\n  slides = [{\"index\": 1, \"text\": \"Ошибка генерации JSON\", \"image_prompt\": \"Error placeholder\"}];\n}\nconst inputData = $('Webhook').first().json.body;\n\nreturn {\n  json: {\n    original_topic: inputData.topic,\n    slides: slides,\n    settings: inputData\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        0
+      ],
+      "id": "6e62106e-adb9-4805-bc85-21a7f1535e17",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "tableId": "posts",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "topic",
+              "fieldValue": "={{ $json.original_topic }}"
+            },
+            {
+              "fieldId": "carousel_content",
+              "fieldValue": "={{ $json.slides }}"
+            },
+            {
+              "fieldId": "generation_settings",
+              "fieldValue": "={{ $json.settings }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $('Webhook').first().json.body.mode === 'auto' ? 'generating' : 'review' }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        464,
+        0
+      ],
+      "id": "74a5e027-dbb6-4d9d-873b-c9065a6f7787",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ELVYePDkdazQFO2T",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a senior SMM content architect and creative director. You create ultra-realistic, brand-safe, artifact-free Instagram carousel structures. Return ONLY a valid JSON array.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Topic: {{ $('Webhook').first().json.body.topic }}\\nNumber of slides: {{ $('Webhook').first().json.body.slides || 5 }}\\n\\nCreate an Instagram carousel as a JSON array using this structure:\\n[\\n  {\\n    \\\"index\\\": 1,\\n    \\\"text\\\": \\\"Short, clear, engaging slide text (max 2 sentences).\\\",\\n    \\\"image_prompt\\\": \\\"Ultra-photorealistic, artifact-free DALL·E prompt in English\\\"\\n  }\\n]\\n\\nTEXT RULES:\\n- Clear, neutral, human language\\n- Slide 1 must hook attention\\n- Logical flow\\n- Final slide gives a takeaway\\n\\nIMAGE PROMPT RULES (CRITICAL):\\n- One realistic scene per slide\\n- Directly related to the topic\\n- Everyday real-life situation\\n\\nREALISM & QUALITY:\\n- Ultra-photorealistic photography\\n- Natural daylight only\\n- DSLR-quality, sharp focus\\n- Realistic skin texture\\n\\nHUMAN SAFETY RULES (IF APPLICABLE):\\n- Single person only\\n- Calm, natural posture\\n- Neutral facial expression\\n- Medium shot or waist-up framing\\n- Hands relaxed, partially out of frame or naturally resting\\n- Anatomically correct body proportions\\n\\nSTRICT EXCLUSIONS:\\n- No extra fingers, hands, arms, or limbs\\n- No blurred or distorted faces\\n- No dynamic movement or action poses\\n- No tight or revealing clothing\\n- No religious or symbolic elements\\n- No text, logos, watermarks\\n- No fantasy or surreal elements\\n\\nSTYLE:\\n- Clean, modern, brand-safe\\n- Instagram-ready\\n- Consistent visual tone\\n\\nReturn ONLY the JSON array.\"\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        64,
+        0
+      ],
+      "id": "a9948ee4-0f63-4503-a89d-c0e844e94331",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "E4sazu6ENW1rLUIf",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const post = $input.first().json;\nconst slides = post.carousel_content;\nreturn slides.map(slide => ({\n  json: {\n    index: slide.index,\n    text: slide.text,\n    image_prompt: slide.image_prompt,\n    postId: post.id \n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        0
+      ],
+      "id": "d4dcb090-a3bd-4d01-8230-62c8147c9c41",
+      "name": "Split Slides"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "a4813031-e91f-476f-898f-a067d2ed1946",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.data[0].url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        448,
+        256
+      ],
+      "id": "97cbfc87-902c-4d55-b49c-d9ec46c6bf27",
+      "name": "Download Image"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/images/generations",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"dall-e-3\",\n  \"prompt\": \"{{ $json.image_prompt }}\",\n  \"n\": 1,\n  \"size\": \"1024x1024\",\n  \"response_format\": \"url\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        256,
+        256
+      ],
+      "id": "e6dc4c0e-9fc8-48c9-981e-a95ba4c18af4",
+      "name": "HTTP Generate Img",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "E4sazu6ENW1rLUIf",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://fogotgnjdpvsfexbcjza.supabase.co/storage/v1/object/content-factory/{{ $('Split Slides').item.json.postId }}/slide_{{ $('Split Slides').item.json.index }}.png",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "image/png"
+            },
+            {
+              "name": "x-upsert",
+              "value": "true"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvZ290Z25qZHB2c2ZleGJjanphIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Nzc0NTc4OCwiZXhwIjoyMDgzMzIxNzg4fQ.MOthHlfp3FHopqUPuKuQ8KxPV_zA5gm_seBGbaJPl58"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        656,
+        256
+      ],
+      "id": "9e6b61de-13a5-41fb-8f8a-0c32d1391f93",
+      "name": "Save in db"
+    },
+    {
+      "parameters": {
+        "jsCode": "const splitData = $('Split Slides').item.json;\nconst postId = splitData.postId;\nconst index = splitData.index;\nconst filePath = `${postId}/slide_${index}.png`;\nconst projectUrl = 'https://fogotgnjdpvsfexbcjza.supabase.co';\nconst bucketName = 'content-factory';\nconst publicUrl = `${projectUrl}/storage/v1/object/public/${bucketName}/${filePath}`;\nreturn {\n  json: {\n    index: index,\n    text: splitData.text,\n    image_prompt: splitData.image_prompt,\n    image_url: publicUrl\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        256
+      ],
+      "id": "74272496-5994-4641-8981-d127d1799dc7",
+      "name": "all time url"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "posts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Create a row').first().json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "carousel_content",
+              "fieldValue": "={{ $('Aggregate Results').item.json.slides }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "approved"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        -16
+      ],
+      "id": "e0eda222-675b-4724-8ca4-9ee16a88956f",
+      "name": "Update a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ELVYePDkdazQFO2T",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst cleanArray = items.map(item => item.json);\nreturn {\n  json: {\n    slides: cleanArray\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        -16
+      ],
+      "id": "e986604a-6621-43d9-b67a-c7f9bca15f9d",
+      "name": "Aggregate Results"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1e5a7cf8-bc03-4e17-a5e9-e511729e9f64",
+              "leftValue": "={{ $('Webhook').first().json.body.mode }}",
+              "rightValue": "auto",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        624,
+        0
+      ],
+      "id": "73465c60-ad41-4aa7-a038-50f1bc3ca001",
+      "name": "If"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Slides": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Generate Img",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Generate Img": {
+      "main": [
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Save in db",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save in db": {
+      "main": [
+        [
+          {
+            "node": "all time url",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "all time url": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row": {
+      "main": [
+        []
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Split Slides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "23bfccb5-753e-4e00-ac78-39758fed6b48",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d63b6b85d9a6f3a05b77157b36bcd0f29972c6ce4983c0f7f6b2e42c24fde778"
+  },
+  "id": "gVGAuF3YJ8E62rDM",
+  "tags": []
+}

@@ -1,0 +1,588 @@
+{
+  "name": "Update",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "update-post",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f26d4dbf-fb8e-4566-b5f7-633d24d7e0ef",
+      "name": "Webhook",
+      "webhookId": "e8e357ec-0e87-45f3-a13e-8fdaceaf829a"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "update_text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "7c41a2be-3169-4c62-ad8e-d6498aa38c54"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9658b575-6da1-42eb-893a-6775e3b53595",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "regenerate_image_prompt",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8c11f179-aab5-4b0b-8f7a-d2bc6d57af34",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "regenerate_final_image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "9cbf585e-c5d3-402d-88a4-d5fe6a29eb89",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "const post = $input.first().json;\nconst webhookData = $('Webhook').first().json.body;\n\nconst slideIndexToUpdate = webhookData.slideIndex;\nconst newText = webhookData.newText;\nconst slides = post.carousel_content;\n\nconst slideIndex = slides.findIndex(s => s.index === slideIndexToUpdate);\nif (slideIndex > -1) {\n  slides[slideIndex].text = newText;\n}\n\nreturn {\n  json: {\n    postId: post.id,\n    updatedSlides: slides\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        -96
+      ],
+      "id": "5861f7bb-ccc2-4b1e-9488-88a624af441b",
+      "name": "Prepare Text Update"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an AI SMM expert. You improve slide content. Respond with ONLY a valid JSON object with two keys: \\\"newText\\\" (rewritten slide text, short and engaging) and \\\"newPrompt\\\" (a detailed, photorealistic DALL-E prompt based on the new text).\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Improve and rewrite the content for this slide. Original text: '{{ $('Prepare For Rewrite').first().json.textToRewrite }}'. Return the result as a JSON object { \\\"newText\\\": \\\"...\\\", \\\"newPrompt\\\": \\\"...\\\" }.\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        768,
+        96
+      ],
+      "id": "a1d0bd46-9321-4bfd-84e9-1d771f57c606",
+      "name": "Rewrite Image Prompt",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "E4sazu6ENW1rLUIf",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "posts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.postId }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "carousel_content",
+              "fieldValue": "={{ $json.updatedSlides }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        96
+      ],
+      "id": "b752ff5e-7048-43d4-8c3b-9481368fa7d3",
+      "name": "Update a row1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ELVYePDkdazQFO2T",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "posts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.postId }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "carousel_content",
+              "fieldValue": "={{ $json.updatedSlides }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -96
+      ],
+      "id": "0bb10625-8951-4346-9492-9d202ff95725",
+      "name": "Supabase_DB",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ELVYePDkdazQFO2T",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "posts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.body.postId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        416,
+        -96
+      ],
+      "id": "c53e64c1-c442-4d8a-9802-a819315172df",
+      "name": "Get Post by ID",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ELVYePDkdazQFO2T",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "posts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.body.postId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        416,
+        96
+      ],
+      "id": "1477a1d4-7b66-47e4-b683-8c9b6270f422",
+      "name": "Get Post by ID1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ELVYePDkdazQFO2T",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const preparedData = $('Prepare For Rewrite').first().json;\nconst aiResponse = JSON.parse($input.first().json.choices[0].message.content);\n\nconst slides = preparedData.allSlides;\nconst slideIndex = slides.findIndex(s => s.index === preparedData.slideIndexToUpdate);\n\nif (slideIndex > -1) {\n  slides[slideIndex].text = aiResponse.newText;\n  slides[slideIndex].image_prompt = aiResponse.newPrompt;\n}\n\nreturn {\n  json: {\n    postId: preparedData.postId,\n    updatedSlides: slides\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        96
+      ],
+      "id": "6454a6d5-ec63-4021-8620-6e0168dc2d83",
+      "name": "Assemble Rewritten Slides"
+    },
+    {
+      "parameters": {
+        "jsCode": "const post = $input.first().json;\nconst webhookData = $('Webhook').first().json.body;\n\nconst slideIndexToUpdate = webhookData.slideIndex;\nconst slides = post.carousel_content;\nconst slideToRewrite = slides.find(s => s.index === slideIndexToUpdate);\n\nif (!slideToRewrite) {\n  throw new Error(`Slide #${slideIndexToUpdate} not found.`);\n}\nreturn {\n  json: {\n    postId: post.id,\n    allSlides: slides,\n    textToRewrite: slideToRewrite.text, \n    slideIndexToUpdate: slideIndexToUpdate \n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        96
+      ],
+      "id": "ca867f35-35fc-4d0f-a2c8-a3d6414f3366",
+      "name": "Prepare For Rewrite"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "posts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.body.postId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        416,
+        304
+      ],
+      "id": "2aaecc58-fe5e-4f99-b3f9-6f18667e1d20",
+      "name": "Get Post by ID2",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ELVYePDkdazQFO2T",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const post = $input.first().json;\nconst webhookData = $('Webhook').first().json.body;\nconst slideIndex = parseInt(webhookData.slideIndex);\n\nconst slide = post.carousel_content.find(s => s.index === slideIndex);\nif (!slide) throw new Error(`Slide #${slideIndex} not found`);\n\nreturn {\n  json: {\n    prompt: slide.image_prompt,\n    postId: post.id,\n    fileName: `${post.id}/slide_${slideIndex}.png`\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        304
+      ],
+      "id": "c40db7a9-63d6-4c28-a4ba-9abce6a32ce6",
+      "name": "Prepare Image Gen"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/images/generations",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"dall-e-3\",\n  \"prompt\": \"{{ $json.prompt }}\",\n  \"n\": 1,\n  \"size\": \"1024x1024\",\n  \"response_format\": \"url\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        768,
+        304
+      ],
+      "id": "577cf948-d026-451c-b8bb-3f7d20850ace",
+      "name": "HTTP Generate Img",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "E4sazu6ENW1rLUIf",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://fogotgnjdpvsfexbcjza.supabase.co/storage/v1/object/content-factory/{{ $('Prepare Image Gen').first().json.fileName }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "image/png"
+            },
+            {
+              "name": "x-upsert",
+              "value": "true"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvZ290Z25qZHB2c2ZleGJjanphIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Nzc0NTc4OCwiZXhwIjoyMDgzMzIxNzg4fQ.MOthHlfp3FHopqUPuKuQ8KxPV_zA5gm_seBGbaJPl58"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1200,
+        304
+      ],
+      "id": "549704ba-bf95-489f-a8a0-05c83e51add0",
+      "name": "Upload (Overwrite)"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.data[0].url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        976,
+        304
+      ],
+      "id": "78308676-3d19-48c5-87ad-64e652209a83",
+      "name": "Download Image"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Get Post by ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Post by ID1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Post by ID2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Text Update": {
+      "main": [
+        [
+          {
+            "node": "Supabase_DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rewrite Image Prompt": {
+      "main": [
+        [
+          {
+            "node": "Assemble Rewritten Slides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Post by ID": {
+      "main": [
+        [
+          {
+            "node": "Prepare Text Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Post by ID1": {
+      "main": [
+        [
+          {
+            "node": "Prepare For Rewrite",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble Rewritten Slides": {
+      "main": [
+        [
+          {
+            "node": "Update a row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare For Rewrite": {
+      "main": [
+        [
+          {
+            "node": "Rewrite Image Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Post by ID2": {
+      "main": [
+        [
+          {
+            "node": "Prepare Image Gen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Image Gen": {
+      "main": [
+        [
+          {
+            "node": "HTTP Generate Img",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Generate Img": {
+      "main": [
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Upload (Overwrite)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5c45dad1-139e-41a3-a40f-7bed5ba4a7a5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d63b6b85d9a6f3a05b77157b36bcd0f29972c6ce4983c0f7f6b2e42c24fde778"
+  },
+  "id": "ZghCpuIBgFkYzCYL",
+  "tags": []
+}

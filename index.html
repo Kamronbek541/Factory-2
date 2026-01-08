@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏭 Content Factory AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="min-h-screen flex flex-col items-center py-10 px-4">
+    <header class="text-center mb-10">
+        <h1 class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 mb-2">
+             Content Factory 2
+        </h1>
+    </header>
+
+    <main class="w-full max-w-2xl">
+        <div class="glass p-8 rounded-2xl shadow-2xl mb-10">
+            <div class="space-y-6">
+                <div>
+                    <label for="topicInput" class="block text-sm font-medium text-slate-300 mb-2">Тема поста</label>
+                    <input type="text" id="topicInput" placeholder="Например: 5 способов выучить английский..." class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 focus:outline-none transition">
+                </div>
+                <div class="flex gap-4">
+                    <div class="w-1/2">
+                        <label for="slidesInput" class="block text-sm font-medium text-slate-300 mb-2">Кол-во слайдов</label>
+                        <input type="number" id="slidesInput" value="4" min="1" max="10" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 focus:outline-none transition">
+                    </div>
+                    <div class="w-1/2">
+                        <label for="modeInput" class="block text-sm font-medium text-slate-300 mb-2">Режим</label>
+                        <select id="modeInput" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 focus:outline-none transition">
+                            <option value="auto">⚡️ Автоматически</option>
+                            <option value="manual" selected>👀 С модерацией</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="startFactory()" id="generateBtn" class="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:opacity-90 text-white font-bold py-4 rounded-xl shadow-lg transform transition active:scale-95">
+                    <span id="btnText">🚀 Запустить Завод</span>
+                    <span id="btnLoader" class="hidden"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Производим контент...</span>
+                </button>
+            </div>
+        </div>
+    </main>
+    
+    <section id="reviewContainer" class="w-full max-w-5xl mb-10 hidden">
+        <h2 class="text-2xl font-bold mb-6 flex items-center"><span class="bg-yellow-500 w-3 h-8 rounded-full mr-3"></span>На модерации</h2>
+        <div id="reviewGrid" class="space-y-8"></div>
+    </section>
+
+    <section id="resultContainer" class="w-full max-w-5xl hidden">
+        <h2 class="text-2xl font-bold mb-6 flex items-center"><span class="bg-emerald-500 w-3 h-8 rounded-full mr-3"></span>Готовая карусель</h2>
+        <div id="slidesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-current-post-id=""></div>
+    </section>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
