@@ -1,60 +1,224 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏭 Content Factory AI</title>
+    <title>Content Zavod v2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="min-h-screen flex flex-col items-center py-10 px-4">
-    <header class="text-center mb-10">
-        <h1 class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 mb-2">
-             Content Factory 2
-        </h1>
-    </header>
 
-    <main class="w-full max-w-2xl">
-        <div class="glass p-8 rounded-2xl shadow-2xl mb-10">
-            <div class="space-y-6">
-                <div>
-                    <label for="topicInput" class="block text-sm font-medium text-slate-300 mb-2">Тема поста</label>
-                    <input type="text" id="topicInput" placeholder="Например: 5 способов выучить английский..." class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 focus:outline-none transition">
+<body>
+
+    <!-- === TOAST NOTIFICATION === -->
+    <div id="toast-container"
+        class="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] transition-all duration-300 opacity-0 -translate-y-10 pointer-events-none">
+        <div
+            class="bg-red-500/10 backdrop-blur-md border border-red-500/50 text-red-200 px-6 py-3 rounded-full shadow-2xl flex items-center gap-3">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span id="toast-message" class="font-mono text-sm">Error</span>
+        </div>
+    </div>
+
+    <!-- === VIEW 1: LOGIN SCREEN === -->
+    <section id="login-screen">
+        <div id="canvas-container"></div>
+
+        <div class="relative z-10 w-full h-full flex flex-col items-center justify-center p-8 pointer-events-none">
+            <div class="text-center mb-12 pointer-events-auto">
+                <h2
+                    class="text-4xl md:text-6xl font-light text-white leading-tight tracking-tight mix-blend-overlay opacity-90 mb-4">
+                    Content Zavod <span class="font-serif italic text-purple-400">2</span>
+                </h2>
+                <p class="text-gray-500 font-mono text-xs tracking-widest">SYSTEM V2.0 // READY</p>
+            </div>
+
+            <div class="w-full max-w-xs pointer-events-auto">
+                <div class="relative group">
+                    <input type="text" id="loginInput"
+                        class="w-full bg-transparent border-b border-white/20 text-center text-white text-lg py-3 focus:outline-none focus:border-purple-500 transition-all font-mono placeholder-white/20"
+                        placeholder="[ enter login ]" autocomplete="off">
                 </div>
-                <div class="flex gap-4">
-                    <div class="w-1/2">
-                        <label for="slidesInput" class="block text-sm font-medium text-slate-300 mb-2">Кол-во слайдов</label>
-                        <input type="number" id="slidesInput" value="4" min="1" max="10" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 focus:outline-none transition">
-                    </div>
-                    <div class="w-1/2">
-                        <label for="modeInput" class="block text-sm font-medium text-slate-300 mb-2">Режим</label>
-                        <select id="modeInput" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 focus:outline-none transition">
-                            <option value="auto">⚡️ Автоматически</option>
-                            <option value="manual" selected>👀 С модерацией</option>
-                        </select>
-                    </div>
-                </div>
-                <button onclick="startFactory()" id="generateBtn" class="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:opacity-90 text-white font-bold py-4 rounded-xl shadow-lg transform transition active:scale-95">
-                    <span id="btnText">🚀 Запустить Завод</span>
-                    <span id="btnLoader" class="hidden"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Производим контент...</span>
+                <button onclick="window.app.handleLoginAttempt()"
+                    class="mt-8 w-full bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded px-4 py-2 text-xs font-mono tracking-widest transition">
+                    INITIALIZE
                 </button>
             </div>
         </div>
-    </main>
-    
-    <section id="reviewContainer" class="w-full max-w-5xl mb-10 hidden">
-        <h2 class="text-2xl font-bold mb-6 flex items-center"><span class="bg-yellow-500 w-3 h-8 rounded-full mr-3"></span>На модерации</h2>
-        <div id="reviewGrid" class="space-y-8"></div>
     </section>
 
-    <section id="resultContainer" class="w-full max-w-5xl hidden">
-        <h2 class="text-2xl font-bold mb-6 flex items-center"><span class="bg-emerald-500 w-3 h-8 rounded-full mr-3"></span>Готовая карусель</h2>
-        <div id="slidesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-current-post-id=""></div>
+    <!-- === DASHBOARD WRAPPER === -->
+    <section id="dashboard-screen" class="hidden h-screen flex bg-[#09090b] text-white relative z-50">
+
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-black border-r border-zinc-800 p-6 flex flex-col flex-shrink-0">
+            <div class="text-lg font-bold mb-8 tracking-wider text-white">ZAVOD.AI</div>
+
+            <nav class="space-y-2 flex-grow">
+                <div class="text-[10px] text-zinc-600 font-bold uppercase tracking-wider mb-2 px-3">Menu</div>
+                <div class="nav-item p-3 rounded hover:bg-zinc-900 cursor-pointer text-gray-400 hover:text-white transition flex items-center gap-3"
+                    onclick="window.app.switchTab('posts')">
+                    <i class="fa-solid fa-layer-group"></i> My Projects
+                </div>
+                <div class="nav-item p-3 rounded hover:bg-zinc-900 cursor-pointer text-gray-400 hover:text-white transition flex items-center gap-3"
+                    onclick="window.app.switchTab('create')">
+                    <i class="fa-solid fa-plus"></i> New Project
+                </div>
+            </nav>
+
+            <div class="mt-auto pt-6 border-t border-zinc-800 flex items-center gap-3">
+                <div id="userAvatar"
+                    class="w-8 h-8 bg-purple-900/50 text-purple-400 rounded-full flex items-center justify-center font-bold text-xs border border-purple-500/20">
+                </div>
+                <div class="overflow-hidden">
+                    <div id="userNameDisplay" class="font-mono text-xs text-white truncate">User</div>
+                    <div class="text-[10px] text-green-500">● Online</div>
+                </div>
+                <button onclick="window.app.logout()" class="ml-auto text-zinc-600 hover:text-white transition"><i
+                        class="fa-solid fa-power-off"></i></button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 overflow-hidden relative">
+
+            <!-- VIEW 2: POSTS LIST & CREATE (TAB SYSTEM) -->
+            <div id="view-list" class="h-full overflow-y-auto p-8">
+
+                <!-- Tab: My Posts -->
+                <div id="tab-posts">
+                    <div class="flex justify-between items-end mb-8">
+                        <div>
+                            <h2 class="text-3xl font-light text-white">Project Archive</h2>
+                            <p class="text-zinc-500 text-sm mt-1">Manage your generations</p>
+                        </div>
+                        <button onclick="window.app.switchTab('create')"
+                            class="bg-white text-black hover:bg-gray-200 px-4 py-2 rounded text-xs font-bold tracking-wider transition">
+                            + NEW PROJECT
+                        </button>
+                    </div>
+                    <div id="postsGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20"></div>
+                </div>
+
+                <!-- Tab: Create New -->
+                <div id="tab-create" class="hidden max-w-xl mx-auto mt-10">
+                    <div class="bg-zinc-900/50 border border-zinc-800 p-8 rounded-2xl backdrop-blur-sm">
+                        <div class="mb-6 text-center">
+                            <h2 class="text-2xl font-light text-white">Initialize Generator</h2>
+                            <p class="text-zinc-500 text-xs mt-1 font-mono">NEURAL ENGINE V4.5</p>
+                        </div>
+
+                        <div class="space-y-6">
+                            <!-- Topic -->
+                            <div>
+                                <label class="block text-xs text-zinc-500 uppercase font-bold mb-2">Topic /
+                                    Concept</label>
+                                <input type="text" id="topicInput"
+                                    class="w-full bg-black border border-zinc-700 p-4 rounded-lg text-white focus:border-purple-500 outline-none transition"
+                                    placeholder="e.g. Future of AI in 2030">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <!-- Slides -->
+                                <div>
+                                    <label class="block text-xs text-zinc-500 uppercase font-bold mb-2">Slide
+                                        Count</label>
+                                    <input type="number" id="slidesInput" value="4" min="1" max="10"
+                                        class="w-full bg-black border border-zinc-700 p-4 rounded-lg text-white focus:border-purple-500 outline-none transition">
+                                </div>
+                                <!-- Mode -->
+                                <div>
+                                    <label class="block text-xs text-zinc-500 uppercase font-bold mb-2">Workflow
+                                        Mode</label>
+                                    <select id="modeInput"
+                                        class="w-full bg-black border border-zinc-700 p-4 rounded-lg text-white focus:border-purple-500 outline-none transition">
+                                        <option value="auto">⚡️ Auto-Pilot</option>
+                                        <option value="manual" selected>👀 Manual Review</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- НОВОЕ: DATE & TIME PICKER (STYLED) -->
+                            <div>
+                                <label class="block text-xs text-zinc-500 uppercase font-bold mb-2">Schedule Posting
+                                    (Optional)</label>
+                                <div
+                                    class="date-input-wrapper bg-black/50 border border-zinc-700 rounded-lg flex items-center px-4 hover:border-zinc-600 transition group focus-within:!border-purple-500">
+                                    <i
+                                        class="fa-regular fa-calendar-days text-zinc-500 group-focus-within:text-purple-500 transition"></i>
+                                    <input type="datetime-local" id="scheduleInput"
+                                        class="custom-date-input bg-transparent w-full text-white text-sm py-4 outline-none border-none cursor-pointer placeholder-zinc-600"
+                                        style="color-scheme: dark;">
+                                </div>
+                                <p class="text-[10px] text-zinc-600 mt-2 font-mono ml-1">* Timezone: Local System Time
+                                </p>
+                            </div>
+
+                            <button id="generateBtn" onclick="window.app.handleStartFactory()"
+                                class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-lg transition mt-4 shadow-lg shadow-purple-900/20">
+                                START SEQUENCE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 3: FULL EDITOR (Hidden by default) -->
+            <div id="view-editor" class="hidden h-full flex flex-col bg-[#09090b]">
+                <!-- Editor Header -->
+                <div
+                    class="h-16 border-b border-zinc-800 flex items-center justify-between px-6 bg-black/50 backdrop-blur-md shrink-0">
+                    <button onclick="window.app.backToDashboard()"
+                        class="text-zinc-400 hover:text-white flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition">
+                        <i class="fa-solid fa-arrow-left"></i> Back to Archive
+                    </button>
+
+                    <div class="flex items-center gap-4">
+                        <span id="editor-status"
+                            class="text-[10px] font-bold uppercase px-3 py-1 rounded bg-zinc-800 text-zinc-400">LOADING</span>
+                        <div id="editor-actions"></div>
+                    </div>
+                </div>
+
+                <!-- Editor Body (Split View) -->
+                <div class="flex-1 flex overflow-hidden">
+                    <!-- Left: Slides Scroll -->
+                    <div class="flex-1 overflow-y-auto p-8 bg-zinc-900/30">
+                        <div id="editor-slides-container" class="max-w-4xl mx-auto space-y-8 pb-20">
+                            <!-- Slides injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Right: Settings / Caption -->
+                    <div class="w-96 border-l border-zinc-800 bg-[#0c0c0e] p-6 flex flex-col shrink-0">
+                        <h3 class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">Post Configuration
+                        </h3>
+
+                        <div class="mb-6">
+                            <label class="block text-xs text-zinc-400 mb-2">Instagram Caption</label>
+                            <textarea id="editor-caption"
+                                class="w-full h-64 bg-black border border-zinc-800 rounded-lg p-3 text-sm text-gray-300 resize-none focus:border-zinc-600 outline-none"
+                                placeholder="Write your caption here..."></textarea>
+                            <button id="save-caption-btn" onclick="window.app.saveCaption()"
+                                class="mt-2 w-full bg-zinc-800 hover:bg-zinc-700 text-white text-xs py-2 rounded transition">Save
+                                Caption</button>
+                        </div>
+
+                        <div class="mt-auto p-4 bg-zinc-900 rounded-xl border border-zinc-800">
+                            <div class="text-[10px] text-zinc-500 mb-1">PROJECT ID</div>
+                            <div id="editor-post-id" class="text-xs font-mono text-zinc-300 truncate select-all">...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
     </section>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="config.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
+
 </html>
